@@ -14,7 +14,7 @@ import folium
 from folium.plugins import HeatMap
 import logging
 
-DB_NAME = 'alerts0626.db'
+DB_NAME = 'alertsbig.db'
 PIC_DIR = 'pictures/'
 
 reason_dict = {1: '隐藏字段篡改', 2: '单选按钮篡改', 3: '链接参数篡改', 4: '未知字段', 5: '未知字段类型', 6: '缓存溢出攻击',
@@ -510,12 +510,23 @@ def alerts_world_map_via_ip_basemap(chart_data):
                     resolution='l', projection='cass', lat_0=42.5, lon_0=120)
     else:
         pic_name = 'world.png'
-        m = Basemap(projection='robin', lat_0=35, lon_0=110, resolution='l')
-    m.drawcoastlines(linewidth=0.1)
-    m.drawcountries(linewidth=0.1)
-    m.drawmapboundary(fill_color='#A6CAE0', linewidth=0)
+        #m = Basemap(projection='robin', lat_0=35, lon_0=110, resolution='l')
+        m = Basemap(projection='merc',
+                     llcrnrlat=-60,
+                     urcrnrlat=65,
+                     llcrnrlon=-180,
+                     urcrnrlon=180,
+                     lat_ts=0,
+                     resolution='c')
+        m.fillcontinents(color='#191919', lake_color='#000000')  # dark grey land, black lakes
+        m.drawmapboundary(fill_color='#000000')  # black background
+        m.drawcountries(linewidth=0.1, color="w")  # thin white line for country borders
+
+    #m.drawcoastlines(linewidth=0.1)
+    #m.drawcountries(linewidth=0.1)
+    #m.drawmapboundary(fill_color='#A6CAE0', linewidth=0)
     m.bluemarble(scale=0.5)
-    m.fillcontinents(color='#C0C0C0', lake_color='#A6CAE0', zorder=0.1)  # , alpha=0.3)#1A4680
+    #m.fillcontinents(color='#C0C0C0', lake_color='#A6CAE0', zorder=0.1)  # , alpha=0.3)#1A4680
     #x, y = m(lon, lat)
     size = (alert_num/np.max(alert_num))*100
     m.scatter(lon, lat, s=size, label='Alerts Numbers', color='red', marker='o', zorder=2, latlon=True)
@@ -553,7 +564,7 @@ def reason_type_chart_pygal(chart_data):
     for data in chart_data:
         pie_chart.add(data[0], data[1])
         pie_chart.render()
-    pie_chart.render_to_file('reason_type_pie.svg')
+    #pie_chart.render_to_file('reason_type_pie.svg')
     pie_chart.print_values = True
     pie_chart.style = DefaultStyle(
         value_font_family='googlefont:Raleway',
@@ -562,25 +573,24 @@ def reason_type_chart_pygal(chart_data):
     #pie_chart.render_to_png('%sreason_type_pie.png' % PIC_DIR)
     pie_chart.render_to_file('%sreason_type_pie.svg' % PIC_DIR)
 
-
-# reason_type_chart_pygal(get_data_by_reasons(DB_NAME))
-# ip_source_chart_pygal(get_top10_ip(DB_NAME))
-# #alerts_world_map_via_ip(get_top10_ip(DB_NAME))
-#alerts_by_date_chart_pygal(get_alerts_time_reason(DB_NAME))
-# all_alert_counts_by_reason_24h(DB_NAME)
-#ip_num = get_distinct_ip_num(DB_NAME)
-#alerts_world_map_via_ip_basemap(get_top10_ip('alertsbig.db', limit=ip_num))
-# uri_counts_by_reason(14, get_uri_by_reason(14, DB_NAME))
+#reason_type_chart_pygal(get_data_by_reasons(DB_NAME)) # a pie chart
+#ip_source_chart_pygal(get_top10_ip(DB_NAME)) # a bar chart
+# #alerts_world_map_via_ip(get_top10_ip(DB_NAME)) # NEVER CALL THIS: taiwan map wrong
+#alerts_by_date_chart_pygal(get_alerts_time_reason(DB_NAME)) # a series of charts created by this function
+#all_alert_counts_by_reason_24h(DB_NAME) # a stacked area chart
+ip_num = get_distinct_ip_num(DB_NAME)
+alerts_world_map_via_ip_basemap(get_top10_ip('alertsbig.db', limit=ip_num))
+#uri_counts_by_reason(14, get_uri_by_reason(14, DB_NAME)) # a Horizontal bar chart
 #export_all_ip(DB_NAME)
 
 
 #top_reasons = get_data_by_reasons(DB_NAME, 'cn')
 # generate 24 chart for all ip and all date
-#alert_counts_by_reason_24h('all', '2018-01-16', '2118-04-04', 'alertsbig.db')
+# alert_counts_by_reason_24h('all', '2018-01-16', '2118-04-04', 'alertsbig.db') # a stacked line chart
 
-#alerts_by_reason_in_24h("20180401", get_alerts_time_reason("alertsbig.db"))
-#get_location_by_ip("218.94.157.126")
-#get_reason_counts_by_date('114.249.227.204', '2018-01-19', '2018-01-20', 'alertsbig.db')
+#alerts_by_reason_in_24h("20180401", get_alerts_time_reason("alertsbig.db")) # a stacked line chart
+#get_location_by_ip("218.94.157.126") # no chart shows
+#get_reason_counts_by_date('114.249.227.204', '2018-01-19', '2018-01-20', 'alertsbig.db') # no chart shows
 
 
 
