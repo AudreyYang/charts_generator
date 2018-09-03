@@ -7,7 +7,14 @@ import numpy as np
 import datetime
 import pickle
 from collections import Counter
-from pygal.style import DefaultStyle
+
+#from pygal.style import DefaultStyle
+#from pygal.style import DarkStyle
+#from pygal.style import Style
+
+from pygal.style import DarkCustomStyleB
+custom_style = DarkCustomStyleB(font_family='googlefont:Roboto')  # import google font
+
 from mpl_toolkits.basemap import Basemap
 import matplotlib.pyplot as plt
 import folium
@@ -15,6 +22,7 @@ from folium.plugins import HeatMap
 import logging
 
 DB_NAME = 'alertsbig.db'
+DB_TEST = 'alerts0614b.db'
 PIC_DIR = 'pictures/'
 
 reason_dict = {1: '隐藏字段篡改', 2: '单选按钮篡改', 3: '链接参数篡改', 4: '未知字段', 5: '未知字段类型', 6: '缓存溢出攻击',
@@ -208,6 +216,43 @@ def get_uri_by_reason(reason, db_name):
             result.append(row)
         return result
 
+def get_host_in_alerts(db_test):  # def function_name(parameter): parameter can be anything just keep unified
+    """
+    Get host in alerts
+    :param db_test: database
+    :return: A list of host and count
+    """
+    if os.path.isfile(db_test) is False:
+        raise FileNotFoundError("Can't find given db %s" % db_test)
+    else:
+        x_labels = []
+        counts = []
+        conn = sqlite3.connect(db_test)
+        conn.text_factory = lambda x: str(x, "utf-8", "ignore")  # to avoid decode error
+        c = conn.cursor()
+        cursor = c.execute("SELECT DISTINCT(host) as host_list, count(1) as counts_num from alerts "
+                           "WHERE host LIKE '%gxtc.edu.cn' "
+                           "GROUP BY host_list "
+                           "ORDER BY counts_num DESC;")
+        for row in cursor:
+            #print(row)
+            x_labels.append(row[0])
+        #print(x_labels)
+            counts.append(row[1])
+
+        bar_chart = pygal.Bar()
+        bar_chart.x_labels = x_labels
+        bar_chart.add('counts', counts)
+        bar_chart.render_to_file('%sget_host_in_alerts.svg' % PIC_DIR)
+
+
+
+
+
+
+      # there is a for loop and select count from one host
+
+get_host_in_alerts(DB_TEST)  # call each function at last transfer the REAL data varible inside
 
 def get_alerts_time_reason(db_name):
     if os.path.isfile(db_name) is False:
@@ -363,14 +408,16 @@ def uri_counts_by_reason(reason_code, chart_data):
     :return: 
     """
     reason_name = reason_dict_en[reason_code]
-    h_bar = pygal.HorizontalBar(truncate_legend=-1, human_readable=True, legend_at_bottom=True,
-                                legend_at_bottom_columns=1)
+    h_bar = pygal.HorizontalBar(print_values=True, print_values_position='top',
+                                truncate_legend=-1, human_readable=True, style=custom_style)
     h_bar.title = 'Top 10 URI affected by %s' % reason_name
     for uri_counts in chart_data:
         h_bar.add(uri_counts[0], int(uri_counts[1]))
+        #h_bar.style = custom_style
+        #h_bar.value_colors = 'white'
+
     h_bar.render_to_file('%sURI_by_reason_%s.svg' % (PIC_DIR, reason_name))
     #h_bar.render_to_png('%sURI_by_reason_%s.png' % (PIC_DIR, reason_name))
-
 
 def alerts_by_reason_in_24h(date, chart_data):
     """
@@ -542,7 +589,10 @@ def ip_source_chart_pygal(chart_data, date=None):
     :param date: if it is true then chart name is for this day
     :return:
     """
-    bar_chart = pygal.Bar(truncate_legend=-1, human_readable=True)
+    bar_chart = pygal.Bar(legend_at_bottom=True, legend_at_bottom_columns=3,
+                          truncate_legend=-1, human_readable=True, style=custom_style,
+                          print_values=True,
+                          print_values_position='top')
     if date is None:
         bar_chart.title = 'Top 10 IP Source'
         file_name = 'ip_source_bar'
@@ -553,34 +603,35 @@ def ip_source_chart_pygal(chart_data, date=None):
         city_name, country_name = get_location_by_ip(data[0])
         x_label_name = "%s(%s,%s)" % (data[0], city_name, country_name)
         bar_chart.add(x_label_name, data[1])
+        #bar_chart.style = custom_style
         bar_chart.render()
     bar_chart.render_to_file('%s%s.svg' % (PIC_DIR, file_name))
     #bar_chart.render_to_png('%s%s.png' % (PIC_DIR, file_name))
 
 
 def reason_type_chart_pygal(chart_data):
-    pie_chart = pygal.Pie(truncate_legend=-1, human_readable=True)
+    pie_chart = pygal.Pie(truncate_legend=-1, human_readable=True, style=custom_style)
     pie_chart.title = 'Reason Type'
     for data in chart_data:
         pie_chart.add(data[0], data[1])
         pie_chart.render()
     #pie_chart.render_to_file('reason_type_pie.svg')
     pie_chart.print_values = True
-    pie_chart.style = DefaultStyle(
-        value_font_family='googlefont:Raleway',
-        value_font_size=30,
-        value_colors=('white',) * 15)
+    pie_chart.style = custom_style #DefaultStyle(
+        #value_font_family='googlefont:Raleway',
+        #value_font_size=30,
+        #value_colors=('white',) * 15)
     #pie_chart.render_to_png('%sreason_type_pie.png' % PIC_DIR)
     pie_chart.render_to_file('%sreason_type_pie.svg' % PIC_DIR)
 
-#reason_type_chart_pygal(get_data_by_reasons(DB_NAME)) # a pie chart
-#ip_source_chart_pygal(get_top10_ip(DB_NAME)) # a bar chart
+reason_type_chart_pygal(get_data_by_reasons(DB_NAME))  # a pie chart
+ip_source_chart_pygal(get_top10_ip(DB_NAME))  # a bar chart
 # #alerts_world_map_via_ip(get_top10_ip(DB_NAME)) # NEVER CALL THIS: taiwan map wrong
 #alerts_by_date_chart_pygal(get_alerts_time_reason(DB_NAME)) # a series of charts created by this function
 #all_alert_counts_by_reason_24h(DB_NAME) # a stacked area chart
 ip_num = get_distinct_ip_num(DB_NAME)
 alerts_world_map_via_ip_basemap(get_top10_ip('alertsbig.db', limit=ip_num))
-#uri_counts_by_reason(14, get_uri_by_reason(14, DB_NAME)) # a Horizontal bar chart
+uri_counts_by_reason(14, get_uri_by_reason(14, DB_NAME))  # a Horizontal bar chart
 #export_all_ip(DB_NAME)
 
 
